@@ -1,10 +1,10 @@
 ### README
 
-##### 1. 项目简介
+##### 1. Project Overview
 
-通过基于图像处理的基本操作提取掌静脉图像的ROI，重点在于结合手掌边缘检测，以优化手掌轮廓的提取。此外，根据手指轮廓的方向对手掌进行方向校正，提升对手掌旋转的鲁棒性。
+The ERAlign project is part of our sensor module for the touchless palm recognition system. This method ensures accurate palm alignment by utilizing the natural structure of the hand.
 
-##### 2.环境依赖
+##### 2.Environment Dependencies
 
 - opencv-python==4.1.2.30
 - numpy==1.24.4
@@ -12,6 +12,6 @@
 - scikit-image==0.21.0
 - networkx==3.1
 
-##### 3.参数传递
+##### 3.Running
 
-在run_roi.py中更改数据集路径，运行即可
+Change the dataset path in `run_roi.py` and run the program to execute.
