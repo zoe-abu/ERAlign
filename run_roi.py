@@ -9,23 +9,18 @@ from shapely.geometry import Polygon
 
 
 # Setting for CUHK
-# rotated ours_v2:v3
-THRESHOLD_SEG = 90 #tongji:20
-THRESHOLD_EDGE = 10 #tongji:15
+THRESHOLD_SEG = 90 
+THRESHOLD_EDGE = 10 
 BI_THRESHOLD_SEG = True
 BI_THRESHOLD_ROI_CHECK = True
 BLUR = False
-BLUR_SIGMA = 0.05 #tongji:2
+BLUR_SIGMA = 0.05 
 KERNEL_SIZE = (45, 45)
 
 BLUR_ROTATE = True
-BLUR_SIGMA_ROTATE = 0.05 #tongji:2
+BLUR_SIGMA_ROTATE = 0.05 
 BI_THRESHOLD_SEG_ROTATE = False
-THRESHOLD_SEG_ROTATE = 90 #tongji:20
-
-
-
-
+THRESHOLD_SEG_ROTATE = 90 
 
 pad = 0
 def extract_roi(p1, p2, img, color, thickness):
@@ -46,16 +41,12 @@ def extract_roi(p1, p2, img, color, thickness):
     E = (D - s * normal).astype(np.int32)
     F = (C - s * normal).astype(np.int32) 
     
-    
-    
     img_padded = cv2.copyMakeBorder(img, top=pad, bottom=pad, left=pad, right=pad, borderType=cv2.BORDER_CONSTANT, value=[0, 0, 0])
-    # 然后，调整点坐标以考虑新的边界
     
     C += pad
     D += pad
     E += pad
     F += pad
-    
     
     pts = np.array([C, D, E, F], dtype = "float32")
     width = max(np.linalg.norm(E-D), np.linalg.norm(F-C))
@@ -80,19 +71,15 @@ def extract_roi(p1, p2, img, color, thickness):
     return warped, corner_points, img_padded
     
 def calculate_iou_from_points(corners_a, corners_b):
-    # 创建多边形
     poly_a = Polygon(corners_a)
     poly_b = Polygon(corners_b)
     
-    # 检查多边形是否有效（坐标是否正确顺序，多边形是否自相交等）
     if not (poly_a.is_valid and poly_b.is_valid):
         raise ValueError("One of the polygons is invalid. Check the vertices order and intersections.")
     
-    # 计算交集和并集
     inter_polygon = poly_a.intersection(poly_b)
     union_polygon = poly_a.union(poly_b)
     
-    # 计算IoU
     inter_area = inter_polygon.area
     union_area = union_polygon.area
     iou = inter_area / union_area if union_area != 0 else 0
@@ -108,9 +95,7 @@ class GetROI(PalmBasic):
         self.ori_img = img
         self.w, self.h = img.shape
         self.w_rotate, self.h_rotate = int(self.w/ratio_rotate), int(self.h/ratio_rotate)
-        
-        # cv2.imwrite('rotated_img.png', self.norm_img)
-        
+                
     def run_rotate(self):
         img = self.resize_image(self.ori_img, self.ratio_rotate)
         gabors = self._get_gabor_filters()
@@ -216,39 +201,30 @@ class GetROI(PalmBasic):
         
     def detect_keypoints(self, lines_segment):
         def is_on_right(p1, p2, p):
-            """
-            检查点p是否位于由p1和p2定义的线的右侧。
-            使用向量的叉乘。
-            """
             return (p2[0] - p1[0]) * (p[1] - p1[1]) - (p2[1] - p1[1]) * (p[0] - p1[0]) < 0
 
         def find_line_with_all_points_on_right(set1, set2):
-            """
-            在两个点集之间找到一条线，使得所有其他点都在其右侧。
-            """
+
             for p1 in set1:
                 for p2 in set2:
                     
-                    
                     all_on_right = True
                     
-                    # 检查set1中的所有其他点
                     for p in set1:
                         if p is not p1 and is_on_right(p1, p2, p):
                             all_on_right = False
-                            break  # 如果有点不在右侧，跳出循环
-
-                    # 如果set1中的所有点都在右侧，继续检查set2
+                            break  
+                            
                     if all_on_right:
                         for p in set2:
                             if p is not p2 and is_on_right(p1, p2, p):
                                 all_on_right = False
-                                break  # 如果有点不在右侧，跳出循环
+                                break  
 
                     if all_on_right:
-                        return (p1, p2)  # 找到了这样的一条线
+                        return (p1, p2)  
 
-            return set1[np.argmax(set1[:, 0])],  set2[np.argmax(set2[:, 0])] # 如果没有找到这样的线，返回None
+            return set1[np.argmax(set1[:, 0])],  set2[np.argmax(set2[:, 0])] 
         
         if len(lines_segment)==4:
             keypoints = np.zeros([4,2], np.int32)
@@ -275,31 +251,24 @@ class GetROI(PalmBasic):
         return keypoints
             
         
-        
     def sort_and_surround_lines(self, finger_lines, num_points=80):
         min_ys_and_lines = [(np.min(line[:, 1]), line) for line in finger_lines]
 
-        # 按照最小y坐标排序
         sorted_by_y = sorted(min_ys_and_lines, key=lambda item: item[0])
 
-        # 如果你只需要排序后的点集，可以这样提取它们：
         sorted_lines = [item[1] for item in sorted_by_y]
             
         new_point_sets = []
-        half_num = num_points // 2  # 周围点的一半数量
+        half_num = num_points // 2  
 
         for line in sorted_lines:
-            # 找到x值最大的点的索引
             idx_max_x = np.argmax(line[:, 0])
 
-            # 计算要提取的点的索引范围
-            start_idx = max(0, idx_max_x - half_num)  # 确保不会低于0
-            end_idx = min(line.shape[0], idx_max_x + half_num + 1)  # 确保不会超出点集的长度
+            start_idx = max(0, idx_max_x - half_num)  
+            end_idx = min(line.shape[0], idx_max_x + half_num + 1)  
 
-            # 提取点
             extracted_points = line[start_idx:end_idx]
 
-            # 保存到新的点集列表中
             new_point_sets.append(extracted_points)
 
         
@@ -308,7 +277,6 @@ class GetROI(PalmBasic):
     def find_concave_finger(self,hull_contour_coord_small,hull_contour_img_small,palm_len, hull_coord_right, palm_contour):
 
         finger_lines = []
-
         
         mask = np.array([cv2.pointPolygonTest(hull_contour_coord_small[:,0,:], tuple(pt), measureDist=True) > 0.5 for pt in palm_contour])
         transitions = np.where(mask[:-1] != mask[1:])[0] + 1
@@ -353,7 +321,6 @@ class GetROI(PalmBasic):
         contours_final, hierarchy = cv2.findContours(finger_edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
 
         contours_sorted = sorted(contours_final, key=cv2.contourArea, reverse=True)
-
         top_contours = contours_sorted[:2]
 
         selected_contour = None
@@ -399,8 +366,6 @@ class GetROI(PalmBasic):
             if np.sum(labels == index + 1) > (20 / self.ratio):
                 edges_img[labels == index + 1] = 255
                 
-
-
         points = np.argwhere(edges_img > 0)
         centroid_x, centroid_y = np.mean(points, axis=0)[1], np.mean(points, axis=0)[0]
 
@@ -429,10 +394,6 @@ class GetROI(PalmBasic):
 
         angle_combined = angle_degrees_rough - angle_degree_fine + 180
         
-        # diff = (angle_combined - angle_degrees_rough) % 360
-        # if abs(diff)>80:
-        #     angle_combined = angle_combined + 180
-        
         return angle_combined
 
 
@@ -456,15 +417,6 @@ class GetROI(PalmBasic):
 
 
     def process_palm_contour_rough(self,sorted_edges_indices,labels,len_palm,hull_contour_small,concave_contour_img,hull_contour):
-        #输入：
-            #0和1：基于边缘检测到的初始信息
-            #2：hull_m：手掌的x范围【左，右】
-            #3：hull_contour_small：使用了erode缩小的后的凸包的边界图形
-            #4：concave_contour_img：在hull_filled_img_small对应的凸包内的分割边缘图像，认为是分割的指缝部分
-            #5：hull_contour：原始分割图像的边缘图像
-            #其中边缘的线条用的是原始的凸包边缘筛选的，而分割边缘用的是中小的凸包边缘筛选的
-
-        #concave_hull:手掌的粗轮廓，分割和凸包的结合
         
         concave_hull = concave_contour_img |  hull_contour_small
         
@@ -474,7 +426,6 @@ class GetROI(PalmBasic):
         
         edges_counts = 0
         th_edge_count = 3
-        
         
         hull_points = np.argwhere(hull_contour==255)
         
@@ -488,15 +439,12 @@ class GetROI(PalmBasic):
             
             if gray_edge_skele.sum()/255<25:
                 continue
-            # cleaned_matrix,source_node,dest_node,path
             
-            #查找最小路径线条
             results_graph = self.find_closest_path_graph(gray_edge_skele)
 
-            
             if len(results_graph[1])==0:
                 continue
-            #根据找到的线条判断是否是谷状的
+                
             flag_valley,rightnode_index = self.judge_valley(results_graph[1])
 
             if not flag_valley:
@@ -504,17 +452,15 @@ class GetROI(PalmBasic):
                 left_node = results_graph[1][0]
                 left_hull_points = hull_points[np.argwhere(hull_points[:,0]==left_node[0])]
                 left_dest = left_node[1] - np.min(left_hull_points[:,0,1])
-                # 根据线段的最右端判断是否是手指部分的线条，如果太高金右边则不是
+                
                 if left_dest >(len_palm/6):
                     # th_edge_count=2
                     continue
-                # 删除掉非谷状弯曲部分的点
+                    
                 path_valid = self.find_farthest_point(results_graph[1],th_removed)
                 gray_edge_skele = np.zeros_like(self.cut_norm_img)
                 cv2.polylines(gray_edge_skele, [path_valid], isClosed=False, color=(255, 255, 255), thickness=1)
-                
-                # 将线段的右端点和手掌的大致轮廓相连，这里大致轮廓是凸包和分割边界的结合：其中边缘的线条用的是原始的凸包边缘筛选的，而分割边缘用的是中小的凸包边缘筛选的
-                
+                                
                 closest_point,closest_dist = self.find_closest_white_point(concave_hull,path_valid[0])
                 cv2.line(gray_edge_skele, closest_point, tuple(path_valid[0]), 255, thickness=1)
 
@@ -535,14 +481,10 @@ class GetROI(PalmBasic):
                 gray_edge_skele = results_graph[0].astype(np.uint8)
 
                 closest_point_dest,closest_dist = self.find_closest_white_point(concave_hull,dest_node[::-1])
-            
                 cv2.line(gray_edge_skele, closest_point_dest, dest_node[::-1], 255, thickness=1)
                 
-
                 closest_point_src,closest_dist = self.find_closest_white_point(concave_hull,src_node[::-1])
-
                 cv2.line(gray_edge_skele, closest_point_src, src_node[::-1], 255, thickness=1)
-
             
             edges_counts+=1
             finger_edges = finger_edges | gray_edge_skele
@@ -553,51 +495,20 @@ class GetROI(PalmBasic):
         return finger_edges
 
 def create_dirs(sub_dirs, parent_dir):
-    # 存储创建的目录的完整路径
     full_dir_paths = []
 
-    # 遍历子目录列表
     for sub_dir in sub_dirs:
-        # 添加版本信息到子目录名称
         # sub_dir_with_version = f"{sub_dir}{version}"
 
-        # 创建完整的目录路径
         full_dir_path = os.path.join(parent_dir, sub_dir)
-
-        # 如果目录不存在，则创建它
         if not os.path.exists(full_dir_path):
-            os.makedirs(full_dir_path)  # 使用makedirs，如果父级目录不存在，它也会被创建
+            os.makedirs(full_dir_path) 
 
-        # 添加新创建的目录到列表中
         full_dir_paths.append(full_dir_path)
 
     return full_dir_paths
-
-def create_dirs_version(sub_dirs, parent_dir, version):
-    # 存储创建的目录的完整路径
-    full_dir_paths = []
-
-    # 遍历子目录列表
-    for sub_dir in sub_dirs:
-        # 添加版本信息到子目录名称
-        sub_dir_with_version = f"{sub_dir}{version}"
-
-        # 创建完整的目录路径
-        full_dir_path = os.path.join(parent_dir, sub_dir_with_version)
-
-        # 如果目录不存在，则创建它
-        if not os.path.exists(full_dir_path):
-            os.makedirs(full_dir_path)  # 使用makedirs，如果父级目录不存在，它也会被创建
-
-        # 添加新创建的目录到列表中
-        full_dir_paths.append(full_dir_path)
-
-    return full_dir_paths
-
 
 def run_rotated_vis(dst_root_dir,dir_gray_files,kp_dir):
-        
-    
     
     all_sub_dirs = {
         'illu': ['illustration_fail','illustration_suc','illustration_no'],
@@ -605,22 +516,18 @@ def run_rotated_vis(dst_root_dir,dir_gray_files,kp_dir):
         'kp': ['keypoints_fail','keypoints_suc'],
     }
     
-    
     kp_datas = os.listdir(kp_dir)
     
     parent_dir = os.path.join(dst_root_dir,'ours1/') 
     all_full_dir_paths = {}
 
-    # 创建所有目录
     for key, sub_dirs in all_sub_dirs.items(): 
-        # 保存对应 key 的目录列表到字典中
         all_full_dir_paths[key] = create_dirs(sub_dirs, parent_dir)
 
     filenames = sorted(os.listdir(dir_gray_files))
     iou_list = []
     for idx, filename in enumerate(filenames):
         
-
         img_path = os.path.join(dir_gray_files, filename)
         gray_img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         
@@ -666,26 +573,14 @@ def run_rotated_vis(dst_root_dir,dir_gray_files,kp_dir):
             print(f"{idx}: Failed Processing {filename}")
             cv2.imwrite(os.path.join(all_full_dir_paths['illu'][2], filename), show_img)
         
-        # cv2.imwrite('a.png', img_padded)
-        
-        a = 1
-    
     print(np.sum(iou_list)/idx)
-            
-
-            
-                             
+                  
 if __name__ == '__main__':
-    ####注意切换对应的settings-------------------------
-    # run_first_vis_sample_ori()
     src_dir =  '/home/zdp/Dataset/results_roi_pami_new/cuhk12000_pros/rotated/'
     dst_dir = '/home/zdp/Dataset/results_roi_pami_new/cuhk12000_pros/rotated/'
     
-            
     dir_gray_files = os.path.join(src_dir,'palm_ori')
     kp_dir = os.path.join(src_dir,'keypoint_label')
     run_rotated_vis(dst_dir,dir_gray_files,kp_dir)
-    
-    # cv2.polylines(self.show_img, [np.array([C, D, E, F])], isClosed=True, color=(255, 255, 255), thickness=2)
-        
+            
 
